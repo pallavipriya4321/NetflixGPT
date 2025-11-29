@@ -1,11 +1,88 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Header from "./Header";
+import checkValidateData from "../utils/validate";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import app from "../utils/firebase";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [isSignIn, setIssignin] = useState(true);
+  const [isFocused, setisfocused] = useState({
+    name: false,
+    email: false,
+    password: false,
+  });
+  const [errorMessage, setErrorMessage] = useState("");
+  const name = useRef(null);
+  const email = useRef(null);
+  const password = useRef(null);
+  const navigate = useNavigate();
 
   const handleSignIn = () => {
     setIssignin(!isSignIn);
+  };
+
+  const handleButtonClick = (e) => {
+    e.preventDefault();
+    const fullName = !isSignIn ? name.current?.value : null;
+
+    const message = checkValidateData({
+      email: email.current.value,
+      password: password.current.value,
+      name: fullName,
+    });
+    setErrorMessage(message);
+    if (message === null) {
+      if (isSignIn) {
+        //sign in
+        const auth = getAuth();
+        signInWithEmailAndPassword(
+          auth,
+          email.current.value,
+          password.current.value
+        )
+          .then((userCredential) => {
+            // Signed in
+            const user = userCredential.user;
+            console.log(user);
+            navigate("/browse");
+
+            // ...
+          })
+          .catch((error) => {
+            const errorCode = error.code;
+            const errorMessage = error.message;
+            setErrorMessage(errorMessage);
+            console.log(errorCode, errorMessage);
+          });
+      } else {
+        //sign up
+
+        const auth = getAuth();
+        createUserWithEmailAndPassword(
+          auth,
+          email.current.value,
+          password.current.value
+        )
+          .then((userCredential) => {
+            // Signed up
+            const user = userCredential.user;
+            navigate("/browse");
+            console.log(user);
+            // ...
+          })
+          .catch((error) => {
+            const errorCode = error.code;
+            const errorMessage = error.message;
+            setErrorMessage(errorMessage);
+            // ..
+          });
+      }
+    } else return;
   };
 
   return (
@@ -18,43 +95,64 @@ const Login = () => {
       />
 
       {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/20"></div>
       <Header />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-black/70 px-16 py-10 rounded-md w-[550px]">
-          <div className="text-white text-4xl font-extrabold">
+      <div className="absolute inset-0 bg-gradient-to-b z-0 from-black/60 via-black/50 to-black/20"></div>
+
+      <div className="absolute inset-0 flex pt-28 justify-center">
+        <div className="bg-black/80 px-16 py-10 rounded-md w-[520px] mb-5">
+          <div className="text-white text-4xl font-extrabold pt-4 mb-2">
             {isSignIn ? "Sign In" : "Sign up"}
           </div>
-          <form className="flex flex-col space-y-4 py-8">
+          <form className="flex flex-col space-y-4 py-6">
             {!isSignIn && (
-              <div className="relative mt-4">
+              <div className="relative">
                 <input
+                  ref={name}
                   type="text"
+                  onFocus={() => setisfocused({ ...isFocused, name: true })}
+                  onBlur={() => setisfocused({ ...isFocused, name: false })}
+                  required
                   placeholder="Full Name"
-                  className="peer w-full p-4 bg-black/70 text-white rounded outline text-xl"
+                  className={`w-full p-4 bg-black/70 text-white text-xl rounded-md outline transition-all ${
+                    isFocused.name ? "border-2" : "border-0"
+                  }`}
                 />
               </div>
             )}
 
             <input
+              ref={email}
               type="text"
+              onFocus={() => setisfocused({ ...isFocused, email: true })}
+              onBlur={() => setisfocused({ ...isFocused, email: false })}
+              required
               placeholder="Email or mobile number"
-              className="p-4 bg-black/70 text-white rounded outline placeholder:text-gray-400 placeholder:text-xl"
+              className={`p-4 bg-black/70 text-white rounded-md outline placeholder:text-gray-400 text-xl ${
+                isFocused.email ? "border-2" : ""
+              }`}
             />
             <input
+              ref={password}
               type="password"
+              onFocus={() => setisfocused({ ...isFocused, password: true })}
+              onBlur={() => setisfocused({ ...isFocused, password: false })}
               placeholder="Password"
-              className="p-4 bg-black/70 text-white rounded outline placeholder:text-gray-400 placeholder:text-xl"
+              required
+              className={`p-4 bg-black/70 text-white rounded outline placeholder:text-gray-400 placeholder:text-xl ${
+                isFocused.password ? "border-2" : ""
+              }`}
             />
+            <p className="text-red-500 text-lg mt-2">{errorMessage}</p>
 
             <button
               type="submit"
-              className="p-3 bg-red-600 text-white rounded font-bold"
+              className="p-3 bg-red-600 text-white rounded font-bold cursor-pointer w-full"
+              onClick={handleButtonClick}
             >
               {isSignIn ? "Sign In" : "Sign Up"}
             </button>
             <div className="flex flex-col text-white space-y-6">
-              <div className="underline mt-auto cursor-pointer text-end">
+              <div className="underline mt-auto cursor-pointer text-center font-bold text-md">
                 Forgot Password?
               </div>
               {/* Top Section */}
@@ -77,7 +175,7 @@ const Login = () => {
               <div className="text-gray-400 text-sm">
                 This page is protected by Google reCAPTCHA to ensure you're not
                 a bot.
-                <div className="text-blue-400 underline text-md">
+                <div className="text-blue-400 underline text-md cursor-pointer">
                   Learn more.
                 </div>
               </div>
